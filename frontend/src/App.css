@@ -1,0 +1,36 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden; /* Remove horizontal scroll */
+    box-sizing: border-box;
+  }
+  
+  * {
+    box-sizing: inherit;
+  }
+/* Root Styling */
+html,
+body,
+#root,
+.app,
+.content {
+    height: 100%;
+    width: 100%;
+}
+
+/* App Flex Layout */
+.app {
+    display: flex;
+    position: relative;
+}
+
+/* Scrollbar Styles */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+/* Scrollbar Track */
+::-webkit-scrollbar-track {
+    background: #e0e0e0;
+}
+

@@ -1,0 +1,4 @@
+{
+    "rewrites": [{ "source": "/api/(.*)", "destination": "https://dashboard-backend-9yhb.onrender.com/api/$1" }]
+  }
+  

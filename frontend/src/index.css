@@ -1,0 +1,62 @@
+/* Custom Loading Spinner */
+.loader {
+    width: 50px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 8px solid #0000;
+    border-right-color: #ffa50097;
+    position: relative;
+    animation: l24 1s infinite linear;
+  }
+  .loader:before,
+  .loader:after {
+    content: "";
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: inherit;
+    animation: inherit;
+    animation-duration: 2s;
+  }
+  .loader:after {
+    animation-duration: 4s;
+  }
+  @keyframes l24 {
+    100% {transform: rotate(1turn)}
+  }
+
+  
+  /* Custom Loader */
+.custom-loader {
+    width: 50px;
+    aspect-ratio: 1;
+    display: grid;
+    -webkit-mask: conic-gradient(from 15deg,#0000,#000);
+    animation: l26 1s infinite steps(12);
+  }
+  
+  .custom-loader,
+  .custom-loader:before,
+  .custom-loader:after {
+    background:
+      radial-gradient(closest-side at 50% 12.5%,
+       #f03355 96%,#0000) 50% 0/20% 80% repeat-y,
+      radial-gradient(closest-side at 12.5% 50%,
+       #f03355 96%,#0000) 0 50%/80% 20% repeat-x;
+  }
+  
+  .custom-loader:before,
+  .custom-loader:after {
+    content: "";
+    grid-area: 1/1;
+    transform: rotate(30deg);
+  }
+  
+  .custom-loader:after {
+    transform: rotate(60deg);
+  }
+  
+  @keyframes l26 {
+    100% { transform: rotate(1turn); }
+  }
+  
