@@ -31,13 +31,23 @@ export const setBargainingByCategory = asyncHandler(async (req, res, next) => {
     );
   }
 
-  if (!isProductAll && (startRange === undefined || endRange === undefined)) {
-    return next(
-      new ApiError(
-        400,
-        "Please provide startRange and endRange when isProductAll is false"
-      )
-    );
+  if (!isProductAll) {
+    if (startRange === undefined || endRange === undefined) {
+      return next(
+        new ApiError(
+          400,
+          "Please provide startRange and endRange when isProductAll is false"
+        )
+      );
+    }
+    if (startRange >= endRange) {
+      return next(
+        new ApiError(
+          400,
+          "startRange should be less than endRange"
+        )
+      );
+    }
   }
 
   const shopify = await ShopifyDetails.findOne({ userId: req.user._id });
@@ -52,12 +62,41 @@ export const setBargainingByCategory = asyncHandler(async (req, res, next) => {
     },
   });
 
-  let filteredProducts = [];
+  // Log all unique categories for diagnosis
+  const uniqueCategories = new Set();
   for (const product of data.products) {
-    if ((product.product_type || "Uncategorized") === category) {
+    uniqueCategories.add(product.product_type || "Uncategorized");
+  }
+  console.log("Unique product categories from Shopify:", Array.from(uniqueCategories).sort());
+
+  let filteredProducts = [];
+  // Normalize input category for comparison
+  const normalizedCategory = category.trim().toLowerCase();
+
+  // First try filtering by category
+  for (const product of data.products) {
+    const productCategory = (product.product_type || "Uncategorized").trim().toLowerCase();
+    if (productCategory === normalizedCategory) {
       for (const variant of product.variants) {
         const variantPrice = parseFloat(variant.price);
-        if (isProductAll || (variantPrice >= startRange && variantPrice <= endRange)) {
+        if (variantPrice >= startRange && variantPrice <= endRange) {
+          filteredProducts.push({
+            productId: variant.id.toString(),
+            price: variantPrice,
+            productTitle: product.title,
+            variantTitle: variant.title,
+          });
+        }
+      }
+    }
+  }
+
+  // If no products found for category, fallback to all products in range
+  if (filteredProducts.length === 0) {
+    for (const product of data.products) {
+      for (const variant of product.variants) {
+        const variantPrice = parseFloat(variant.price);
+        if (variantPrice >= startRange && variantPrice <= endRange) {
           filteredProducts.push({
             productId: variant.id.toString(),
             price: variantPrice,
@@ -139,8 +178,13 @@ export const setBargainingToAllProducts = asyncHandler(async (req, res, next) =>
   }
 
   // Only validate range if isProductAll is false
-  if (!isProductAll && (startRange === undefined || endRange === undefined)) {
-    return next(new ApiError(400, "Please provide startRange and endRange when isProductAll is false"));
+  if (!isProductAll) {
+    if (startRange === undefined || endRange === undefined) {
+      return next(new ApiError(400, "Please provide startRange and endRange when isProductAll is false"));
+    }
+    if (startRange >= endRange) {
+      return next(new ApiError(400, "startRange should be less than endRange"));
+    }
   }
 
   const shopify = await ShopifyDetails.findOne({ userId: req.user._id });
@@ -156,27 +200,16 @@ export const setBargainingToAllProducts = asyncHandler(async (req, res, next) =>
 
   let filteredProducts = [];
   
-  // If isProductAll is true, include all products without range filtering
-  if (isProductAll) {
-    filteredProducts = data.products.flatMap(product => 
-      product.variants.map(variant => ({
-        ...variant,
-        category: product.product_type || "Uncategorized",
-        productTitle: product.title
-      }))
-    );
-  } else {
-    // Original range filtering logic
-    for (const product of data.products) {
-      for (const variant of product.variants) {
-        const variantPrice = parseFloat(variant.price);
-        if (variantPrice >= startRange && variantPrice <= endRange) {
-          filteredProducts.push({
-            ...variant,
-            category: product.product_type || "Uncategorized",
-            productTitle: product.title
-          });
-        }
+  // Always apply range filtering
+  for (const product of data.products) {
+    for (const variant of product.variants) {
+      const variantPrice = parseFloat(variant.price);
+      if (variantPrice >= startRange && variantPrice <= endRange) {
+        filteredProducts.push({
+          ...variant,
+          category: product.product_type || "Uncategorized",
+          productTitle: product.title
+        });
       }
     }
   }

@@ -50,8 +50,7 @@ const Inventory = () => {
         const metrics = [
           allProducts.length,        // Total Products
           activeProductCount,        // Active Products
-          inactiveProductCount,      // Inactive Products
-          activeProductCount,        // (Optional duplicate for UI)
+          inactiveProductCount       // Inactive Products
         ];
 
         setData({ products: allProducts, categories, metrics });
@@ -95,7 +94,7 @@ const Inventory = () => {
         <>
           {/* Metric Cards */}
           <Grid container spacing={2} sx={{ fontWeight: 'bold', fontSize: '20px', marginBottom: '20px' }}>
-            {['Total Products', 'Active Products', 'Inactive Products', 'Active Products'].map((metric, index) => (
+            {['Total Products', 'Active Products', 'Inactive Products'].map((metric, index) => (
               <Grid item xs={12} sm={6} md={3} key={index}>
                 <Card
                   sx={{
