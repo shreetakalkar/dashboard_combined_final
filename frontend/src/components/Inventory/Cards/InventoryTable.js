@@ -125,7 +125,7 @@ const InventoryTable = () => {
           };
           return map;
         }, {});
-
+  
         // Transform products data
         const transformedProducts = productsData.map(product => {
           const variant = product.variants?.[0] || {};
@@ -137,11 +137,11 @@ const InventoryTable = () => {
             price: `$${variant.price || 0}`,
             defaultPrice: parseFloat(variant.price || 0),
             quantity: variant.inventory_quantity || 0,
-            behavior: bargainingMap[product.id]?.behavior || "Normal",
-            minPrice: bargainingMap[product.id]?.minPrice || ""
+            behavior: bargainingMap[variant.id]?.behavior || "Normal",
+            minPrice: bargainingMap[variant.id]?.minPrice || ""
           };
         });
-
+  
         setProducts(transformedProducts);
         setBargainingDetails(bargainingMap);
       } catch (err) {
@@ -274,7 +274,7 @@ const InventoryTable = () => {
       localStorage.setItem('lockedMinPrices', JSON.stringify(updatedLockedMinPrices));
 
       // Refresh data
-      setRefreshKey(prev => prev + 1);
+      // setRefreshKey(prev => prev + 1);
       alert("Minimum price deleted successfully and product deactivated!");
     } catch (error) {
       console.error("Error deleting min price:", error);
@@ -478,7 +478,7 @@ const InventoryTable = () => {
                   </Select>
                 </TableCell>
                 <TableCell>
-                  {bargainingDetails[product.variantId]?.minPrice ? (
+                  {bargainingDetails[product.variantId]?.minPrice && parseFloat(bargainingDetails[product.variantId].minPrice) > 0 ? (
                     <Typography>
                       ${bargainingDetails[product.variantId].minPrice}
                     </Typography>
@@ -487,7 +487,7 @@ const InventoryTable = () => {
                       variant="outlined"
                       size="small"
                       onClick={() => handleSetMinPrice(product)}
-                      disabled={product.quantity <= 0 || lockedMinPrices[product.id]}
+                      disabled={product.quantity <= 0 || lockedMinPrices[product.variantId]}
                     >
                       Set min price
                     </Button>
