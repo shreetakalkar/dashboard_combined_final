@@ -388,11 +388,11 @@ export const setBargainingByProduct = asyncHandler(async (req, res, next) => {
 });
 
 export const setBargainingForSingleProduct = asyncHandler(async (req, res, next) => {
-  const { productId, discount } = req.body;
+  const { productId, minPrice } = req.body;
 
   // Validate input fields
-  if (!productId || discount === undefined || isNaN(discount) || discount < 0) {
-    return next(new ApiError(400, "Please provide a valid productId and discount"));
+  if (!productId || minPrice === undefined || isNaN(minPrice) || minPrice < 0) {
+    return next(new ApiError(400, "Please provide a valid productId and minPrice"));
   }
 
   // Find Shopify access details for the authenticated user
@@ -430,10 +430,9 @@ export const setBargainingForSingleProduct = asyncHandler(async (req, res, next)
       return next(new ApiError(404, "Product variant not found"));
     }
 
-    // Calculate discounted minPrice
-    const minPrice = parseFloat((targetVariant.price - (targetVariant.price * discount) / 100).toFixed(2));
-    if (minPrice < 0) {
-      return next(new ApiError(400, "Calculated minPrice is less than zero"));
+    // Validate minPrice is less than original price
+    if (minPrice >= targetVariant.price) {
+      return next(new ApiError(400, "Minimum price must be less than the original price"));
     }
 
     // Update or create bargaining detail for the variant
@@ -444,6 +443,7 @@ export const setBargainingForSingleProduct = asyncHandler(async (req, res, next)
 
     if (existingBargainingDetail) {
       existingBargainingDetail.minPrice = minPrice;
+      existingBargainingDetail.isActive = true;
       await existingBargainingDetail.save();
     } else {
       await BargainingDetails.create({

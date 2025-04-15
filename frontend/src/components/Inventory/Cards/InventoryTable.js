@@ -88,7 +88,6 @@ const InventoryTable = () => {
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
-          // Removed Cache-Control header to avoid CORS issues
         }
       });
 
@@ -117,12 +116,12 @@ const InventoryTable = () => {
           fetchBargainingDetails()
         ]);
 
-        // Transform bargaining data into a map
+        // Transform bargaining data into a map with isActive defaulting to false
         const bargainingMap = bargainingData.reduce((map, detail) => {
           map[detail.productId] = {
             minPrice: detail.minPrice,
             behavior: detail.behavior || "Normal",
-            isActive: detail.isActive || false
+            isActive: detail.isActive || false // Default to false if not specified
           };
           return map;
         }, {});
@@ -164,17 +163,23 @@ const InventoryTable = () => {
   const handleSaveMinPrice = async (minPrice) => {
     try {
       const token = localStorage.getItem("authToken");
-      if (!token) throw new Error("No authentication token found");
-
+      if (!token) throw new Error("Authentication required. Please login again.");
+  
+      // Convert and validate the input
       const numericPrice = parseFloat(minPrice);
       if (isNaN(numericPrice)) {
         throw new Error("Please enter a valid number");
       }
-
-      if (numericPrice >= selectedProduct.defaultPrice) {
-        throw new Error("Minimum price must be less than the default price");
+  
+      if (numericPrice <= 0) {
+        throw new Error("Price must be greater than 0");
       }
-
+  
+      if (numericPrice >= selectedProduct.defaultPrice) {
+        throw new Error(`Minimum price must be less than $${selectedProduct.defaultPrice.toFixed(2)}`);
+      }
+  
+      // Send direct min price to backend (no discount calculation)
       const response = await fetch('http://localhost:5000/bargaining/set-min-price', {
         method: 'POST',
         headers: {
@@ -183,45 +188,35 @@ const InventoryTable = () => {
         },
         body: JSON.stringify({
           productId: selectedProduct.variantId,
-          discount: Math.round(((selectedProduct.defaultPrice - numericPrice) / selectedProduct.defaultPrice) * 100)
+          minPrice: numericPrice 
         })
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to set min price');
+        throw new Error(errorData.message || 'Failed to set minimum price');
       }
-
-      const result = await response.json();
-
-      // Update state
+  
+      // Update local state
       const updatedBargainingDetails = {
         ...bargainingDetails,
-        [selectedProduct.id]: {
-          ...bargainingDetails[selectedProduct.id],
-          minPrice: result.data.minPrice,
-          isActive: true
+        [selectedProduct.variantId]: {
+          ...(bargainingDetails[selectedProduct.variantId] || {}),
+          minPrice: numericPrice.toFixed(2), // Store formatted price
+          isActive: true,
+          behavior: bargainingDetails[selectedProduct.variantId]?.behavior || "Normal"
         }
       };
-
-      const updatedLockedMinPrices = {
-        ...lockedMinPrices,
-        [selectedProduct.id]: true
-      };
-
+  
+      // Persist changes
       setBargainingDetails(updatedBargainingDetails);
-      setLockedMinPrices(updatedLockedMinPrices);
-
-      // Persist to localStorage
       localStorage.setItem('bargainingDetails', JSON.stringify(updatedBargainingDetails));
-      localStorage.setItem('lockedMinPrices', JSON.stringify(updatedLockedMinPrices));
-
-      // Refresh data and close modal
-      setRefreshKey(prev => prev + 1);
+      setRefreshKey(prev => prev + 1); // Trigger data refresh
       setIsModalOpen(false);
-      alert("Minimum price set successfully!");
+  
+      alert(`Minimum price set to $${numericPrice.toFixed(2)} successfully!`);
     } catch (error) {
-      console.error("Error setting min price:", error);
+      console.error("Error setting minimum price:", error);
       alert(error.message || "Failed to set minimum price");
     }
   };
@@ -258,9 +253,15 @@ const InventoryTable = () => {
         throw new Error(errorData.message || 'Failed to delete min price');
       }
 
-      // Update state
+      // Update state - set isActive to false when deleting min price
       const updatedBargainingDetails = { ...bargainingDetails };
-      delete updatedBargainingDetails[productId];
+      if (updatedBargainingDetails[productId]) {
+        updatedBargainingDetails[productId] = {
+          ...updatedBargainingDetails[productId],
+          isActive: false,
+          minPrice: ""
+        };
+      }
 
       const updatedLockedMinPrices = { ...lockedMinPrices };
       delete updatedLockedMinPrices[productId];
@@ -274,7 +275,7 @@ const InventoryTable = () => {
 
       // Refresh data
       setRefreshKey(prev => prev + 1);
-      alert("Minimum price deleted successfully!");
+      alert("Minimum price deleted successfully and product deactivated!");
     } catch (error) {
       console.error("Error deleting min price:", error);
       alert(error.message || "Failed to delete minimum price");
@@ -282,7 +283,12 @@ const InventoryTable = () => {
   };
 
   const handleToggleActive = async (productId) => {
-    // We need to use the product ID, not the variant ID for this endpoint
+    // Only allow toggling if there's a min price set
+    if (!bargainingDetails[productId]?.minPrice) {
+      alert("Please set a minimum price before activating the product");
+      return;
+    }
+
     try {
       const currentActiveCount = Object.values(bargainingDetails).filter(
         detail => detail.isActive
@@ -448,12 +454,12 @@ const InventoryTable = () => {
                 <TableCell>
                   <Button
                     variant="outlined"
-                    color={bargainingDetails[product.id]?.isActive ? "success" : "error"}
+                    color={bargainingDetails[product.variantId]?.isActive ? "success" : "error"}
                     size="small"
-                    onClick={() => handleToggleActive(product.id)}
-                    disabled={product.quantity <= 0}
+                    onClick={() => handleToggleActive(product.variantId)}
+                    disabled={product.quantity <= 0 || !bargainingDetails[product.variantId]?.minPrice}
                   >
-                    {bargainingDetails[product.id]?.isActive ? "Active" : "Inactive"}
+                    {bargainingDetails[product.variantId]?.isActive ? "Active" : "Inactive"}
                   </Button>
                 </TableCell>
                 <TableCell>{product.category}</TableCell>
@@ -472,16 +478,20 @@ const InventoryTable = () => {
                   </Select>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => handleSetMinPrice(product)}
-                    disabled={product.quantity <= 0 || lockedMinPrices[product.id]}
-                  >
-                    {bargainingDetails[product.id]?.minPrice ?
-                      `$${bargainingDetails[product.id].minPrice}` :
-                      "Set min price"}
-                  </Button>
+                  {bargainingDetails[product.variantId]?.minPrice ? (
+                    <Typography>
+                      ${bargainingDetails[product.variantId].minPrice}
+                    </Typography>
+                  ) : (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handleSetMinPrice(product)}
+                      disabled={product.quantity <= 0 || lockedMinPrices[product.id]}
+                    >
+                      Set min price
+                    </Button>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Box display="flex" gap={1}>
@@ -489,8 +499,8 @@ const InventoryTable = () => {
                       variant="contained"
                       color="error"
                       size="small"
-                      onClick={() => handleDeleteMinPrice(product.id)}
-                      disabled={!bargainingDetails[product.id]?.minPrice}
+                      onClick={() => handleDeleteMinPrice(product.variantId)}
+                      disabled={!bargainingDetails[product.variantId]?.minPrice}
                     >
                       Delete
                     </Button>
