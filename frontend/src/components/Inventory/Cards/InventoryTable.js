@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Table,
   TableBody,
@@ -21,165 +21,38 @@ import {
 import { RefreshCw } from "lucide-react";
 import SetMinPriceModal from "../../SetMinPriceModel";
 
-const MAX_ACTIVE_PRODUCTS = 10;
-
-const InventoryTable = () => {
-  // State management
+const InventoryTable = ({ products, bargainingDetails, onToggleActive }) => {
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [bargainingDetails, setBargainingDetails] = useState({});
-  const [refreshKey, setRefreshKey] = useState(0);
   const [lockedMinPrices, setLockedMinPrices] = useState({});
-
-  // Load saved state from localStorage
-  useEffect(() => {
-    const savedBargainingDetails = localStorage.getItem('bargainingDetails');
-    const savedLockedMinPrices = localStorage.getItem('lockedMinPrices');
-
-    if (savedBargainingDetails) {
-      setBargainingDetails(JSON.parse(savedBargainingDetails));
-    }
-    if (savedLockedMinPrices) {
-      setLockedMinPrices(JSON.parse(savedLockedMinPrices));
-    }
-  }, []);
-
-  // API calls
-  const fetchBargainingDetails = async () => {
-    try {
-      const token = localStorage.getItem("authToken");
-      if (!token) throw new Error("No authentication token found");
-
-      const response = await fetch('http://localhost:5000/bargaining/details', {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        cache: "no-store"
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch bargaining details');
-      }
-
-      const result = await response.json();
-      return result.data || [];
-    } catch (error) {
-      console.error("Error fetching bargaining details:", error);
-      throw error;
-    }
-  };
-
-  const fetchProducts = async () => {
-    try {
-      const token = localStorage.getItem("authToken");
-      if (!token) throw new Error("No authentication token found");
-
-      const response = await fetch('http://localhost:5000/shopify/all-products', {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch products');
-      }
-
-      const result = await response.json();
-      return result.data?.products || [];
-    } catch (error) {
-      console.error("Error fetching products:", error);
-      throw error;
-    }
-  };
-
-  // Data fetching and initialization
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const [productsData, bargainingData] = await Promise.all([
-          fetchProducts(),
-          fetchBargainingDetails()
-        ]);
-
-        // Transform bargaining data into a map with isActive defaulting to false
-        const bargainingMap = bargainingData.reduce((map, detail) => {
-          map[detail.productId] = {
-            minPrice: detail.minPrice,
-            behavior: detail.behavior || "Normal",
-            isActive: detail.isActive || false // Default to false if not specified
-          };
-          return map;
-        }, {});
-  
-        // Transform products data
-        const transformedProducts = productsData.map(product => {
-          const variant = product.variants?.[0] || {};
-          return {
-            id: product.id,
-            variantId: variant.id?.toString(),
-            product: product.title,
-            category: product.product_type || "Uncategorized",
-            price: `$${variant.price || 0}`,
-            defaultPrice: parseFloat(variant.price || 0),
-            quantity: variant.inventory_quantity || 0,
-            behavior: bargainingMap[variant.id]?.behavior || "Normal",
-            minPrice: bargainingMap[variant.id]?.minPrice || ""
-          };
-        });
-  
-        setProducts(transformedProducts);
-        setBargainingDetails(bargainingMap);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setError(err.message || "Failed to fetch data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [refreshKey]);
 
   // Handlers
   const handleRefresh = () => {
-    setRefreshKey(prev => prev + 1);
+    window.location.reload();
   };
 
   const handleSaveMinPrice = async (minPrice) => {
     try {
       const token = localStorage.getItem("authToken");
       if (!token) throw new Error("Authentication required. Please login again.");
-  
-      // Convert and validate the input
+
       const numericPrice = parseFloat(minPrice);
       if (isNaN(numericPrice)) {
         throw new Error("Please enter a valid number");
       }
-  
+
       if (numericPrice <= 0) {
         throw new Error("Price must be greater than 0");
       }
-  
+
       if (numericPrice >= selectedProduct.defaultPrice) {
         throw new Error(`Minimum price must be less than $${selectedProduct.defaultPrice.toFixed(2)}`);
       }
-  
-      // Send direct min price to backend (no discount calculation)
+
       const response = await fetch('http://localhost:5000/bargaining/set-min-price', {
         method: 'POST',
         headers: {
@@ -191,30 +64,16 @@ const InventoryTable = () => {
           minPrice: numericPrice 
         })
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to set minimum price');
       }
-  
-      // Update local state
-      const updatedBargainingDetails = {
-        ...bargainingDetails,
-        [selectedProduct.variantId]: {
-          ...(bargainingDetails[selectedProduct.variantId] || {}),
-          minPrice: numericPrice.toFixed(2), // Store formatted price
-          isActive: true,
-          behavior: bargainingDetails[selectedProduct.variantId]?.behavior || "Normal"
-        }
-      };
-  
-      // Persist changes
-      setBargainingDetails(updatedBargainingDetails);
-      localStorage.setItem('bargainingDetails', JSON.stringify(updatedBargainingDetails));
-      setRefreshKey(prev => prev + 1); // Trigger data refresh
-      setIsModalOpen(false);
-  
+
       alert(`Minimum price set to $${numericPrice.toFixed(2)} successfully!`);
+      setIsModalOpen(false);
+      handleRefresh();
+
     } catch (error) {
       console.error("Error setting minimum price:", error);
       alert(error.message || "Failed to set minimum price");
@@ -253,89 +112,12 @@ const InventoryTable = () => {
         throw new Error(errorData.message || 'Failed to delete min price');
       }
 
-      // Update state - set isActive to false when deleting min price
-      const updatedBargainingDetails = { ...bargainingDetails };
-      if (updatedBargainingDetails[productId]) {
-        updatedBargainingDetails[productId] = {
-          ...updatedBargainingDetails[productId],
-          isActive: false,
-          minPrice: ""
-        };
-      }
-
-      const updatedLockedMinPrices = { ...lockedMinPrices };
-      delete updatedLockedMinPrices[productId];
-
-      setBargainingDetails(updatedBargainingDetails);
-      setLockedMinPrices(updatedLockedMinPrices);
-
-      // Persist to localStorage
-      localStorage.setItem('bargainingDetails', JSON.stringify(updatedBargainingDetails));
-      localStorage.setItem('lockedMinPrices', JSON.stringify(updatedLockedMinPrices));
-
-      // Refresh data
-      // setRefreshKey(prev => prev + 1);
       alert("Minimum price deleted successfully and product deactivated!");
+      handleRefresh();
+
     } catch (error) {
       console.error("Error deleting min price:", error);
       alert(error.message || "Failed to delete minimum price");
-    }
-  };
-
-  const handleToggleActive = async (productId) => {
-    // Only allow toggling if there's a min price set
-    if (!bargainingDetails[productId]?.minPrice) {
-      alert("Please set a minimum price before activating the product");
-      return;
-    }
-
-    try {
-      const currentActiveCount = Object.values(bargainingDetails).filter(
-        detail => detail.isActive
-      ).length;
-
-      const isCurrentlyActive = bargainingDetails[productId]?.isActive || false;
-
-      if (!isCurrentlyActive && currentActiveCount >= MAX_ACTIVE_PRODUCTS) {
-        throw new Error(`Maximum ${MAX_ACTIVE_PRODUCTS} products can be active at a time`);
-      }
-
-      const token = localStorage.getItem("authToken");
-      if (!token) throw new Error("No authentication token found");
-
-      const response = await fetch(`http://localhost:5000/bargaining/toggle-active/${productId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          isActive: !isCurrentlyActive
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to toggle active status');
-      }
-
-      // Update state
-      const updatedBargainingDetails = {
-        ...bargainingDetails,
-        [productId]: {
-          ...bargainingDetails[productId],
-          isActive: !isCurrentlyActive
-        }
-      };
-
-      setBargainingDetails(updatedBargainingDetails);
-      localStorage.setItem('bargainingDetails', JSON.stringify(updatedBargainingDetails));
-
-      // Refresh data
-      setRefreshKey(prev => prev + 1);
-    } catch (error) {
-      console.error("Error toggling active status:", error);
-      alert(error.message || "Failed to toggle active status");
     }
   };
 
@@ -351,7 +133,7 @@ const InventoryTable = () => {
   const currentData = filteredProducts.slice(startIndex, startIndex + entriesPerPage);
 
   // Render loading state
-  if (loading) {
+  if (!products) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
         <CircularProgress />
@@ -389,8 +171,8 @@ const InventoryTable = () => {
           </Typography>
         </Grid>
         <Grid item>
-          <IconButton onClick={handleRefresh} color="primary" disabled={loading}>
-            <RefreshCw className={loading ? "animate-spin" : ""} />
+          <IconButton onClick={handleRefresh} color="primary" disabled={!products}>
+            <RefreshCw className={!products ? "animate-spin" : ""} />
           </IconButton>
         </Grid>
       </Grid>
@@ -456,7 +238,7 @@ const InventoryTable = () => {
                     variant="outlined"
                     color={bargainingDetails[product.variantId]?.isActive ? "success" : "error"}
                     size="small"
-                    onClick={() => handleToggleActive(product.variantId)}
+                    onClick={() => onToggleActive(product.variantId)}
                     disabled={product.quantity <= 0 || !bargainingDetails[product.variantId]?.minPrice}
                   >
                     {bargainingDetails[product.variantId]?.isActive ? "Active" : "Inactive"}
