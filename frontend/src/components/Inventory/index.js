@@ -45,6 +45,20 @@ const Inventory = () => {
         const allProducts = inventoryData?.data?.products || [];
         const categories = inventoryData?.data?.availableCategories || [];
 
+        // Calculate product counts per category
+        const categoryCounts = allProducts.reduce((acc, product) => {
+          const category = product.product_type || "Uncategorized";
+          acc[category] = (acc[category] || 0) + 1;
+          return acc;
+        }, {});
+
+        // Create categories array with counts
+        const categoriesWithCounts = categories.map(category => ({
+          name: category,
+          totalProducts: categoryCounts[category] || 0,
+          activeProducts: 0 // Placeholder, can be updated if active counts are available
+        }));
+
         // Fetch bargaining details for products
         const token = localStorage.getItem("authToken");
         const bargainingResponse = await fetch('http://localhost:5000/bargaining/details', {
@@ -104,7 +118,7 @@ const Inventory = () => {
           inactiveProductCount               // Inactive Products
         ];
 
-        setData({ products: transformedProducts, categories, metrics });
+        setData({ products: transformedProducts, categories: categoriesWithCounts, metrics });
         setBargainingDetails(bargainingMap);
       } catch (err) {
         console.error('Error fetching inventory data:', err);
@@ -246,14 +260,13 @@ const Inventory = () => {
 
   // New handler for min price set success
   const handleSetMinPriceSuccess = (productId, minPrice) => {
-    // Update bargainingDetails with new minPrice and keep isActive as is or false if not set
-    const currentIsActive = bargainingDetails[productId]?.isActive || false;
+    // Update bargainingDetails with new minPrice and set isActive to true
     const updatedBargainingDetails = {
       ...bargainingDetails,
       [productId]: {
         ...bargainingDetails[productId],
         minPrice: minPrice,
-        isActive: currentIsActive
+        isActive: true
       }
     };
 
@@ -357,7 +370,7 @@ const Inventory = () => {
             <Grid item xs={12}>
               <Card>
                 <CardContent>
-                  <ProductCategories data={data.categories} />
+                  <ProductCategories categories={data.categories} />
                 </CardContent>
               </Card>
             </Grid>
