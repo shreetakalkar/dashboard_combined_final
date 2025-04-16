@@ -21,7 +21,7 @@ import {
 import { RefreshCw } from "lucide-react";
 import SetMinPriceModal from "../../SetMinPriceModel";
 
-const InventoryTable = ({ products, bargainingDetails, onToggleActive }) => {
+const InventoryTable = ({ products, bargainingDetails, onToggleActive, onDeleteMinPriceSuccess, onSetMinPriceSuccess }) => {
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -72,7 +72,10 @@ const InventoryTable = ({ products, bargainingDetails, onToggleActive }) => {
 
       alert(`Minimum price set to $${numericPrice.toFixed(2)} successfully!`);
       setIsModalOpen(false);
-      handleRefresh();
+      // Instead of refreshing the page, notify parent component to update state
+      if (onSetMinPriceSuccess) {
+        onSetMinPriceSuccess(selectedProduct.variantId, numericPrice);
+      }
 
     } catch (error) {
       console.error("Error setting minimum price:", error);
@@ -113,7 +116,16 @@ const InventoryTable = ({ products, bargainingDetails, onToggleActive }) => {
       }
 
       alert("Minimum price deleted successfully and product deactivated!");
-      handleRefresh();
+      // Update lockedMinPrices state to unlock the min price button for this product
+      setLockedMinPrices(prev => {
+        const updated = { ...prev };
+        delete updated[productId];
+        return updated;
+      });
+      // Notify parent component to update bargainingDetails and products state
+      if (onDeleteMinPriceSuccess) {
+        onDeleteMinPriceSuccess(productId);
+      }
 
     } catch (error) {
       console.error("Error deleting min price:", error);

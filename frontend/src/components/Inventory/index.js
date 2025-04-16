@@ -200,6 +200,95 @@ const Inventory = () => {
     }
   };
 
+  // Added missing handleDeleteMinPriceSuccess function
+  const handleDeleteMinPriceSuccess = (productId) => {
+    // Update bargainingDetails to remove minPrice and set isActive to false
+    const updatedBargainingDetails = {
+      ...bargainingDetails,
+      [productId]: {
+        ...bargainingDetails[productId],
+        minPrice: "",
+        isActive: false
+      }
+    };
+
+    // Update products array accordingly
+    let updatedProducts = data.products.map(product => {
+      if (product.variantId === productId) {
+        return { ...product, minPrice: "", isActive: false };
+      }
+      return product;
+    });
+
+    // Sort updated products by id ascending for consistent order
+    updatedProducts = updatedProducts.sort((a, b) => {
+      if (a.id < b.id) return -1;
+      if (a.id > b.id) return 1;
+      return 0;
+    });
+
+    const activeProductCount = updatedProducts.filter(product => product.isActive).length;
+    const inactiveProductCount = updatedProducts.length - activeProductCount;
+
+    const updatedMetrics = [
+      updatedProducts.length,
+      activeProductCount,
+      inactiveProductCount
+    ];
+
+    setBargainingDetails(updatedBargainingDetails);
+    setData(prevData => ({
+      ...prevData,
+      products: updatedProducts,
+      metrics: updatedMetrics
+    }));
+  };
+
+  // New handler for min price set success
+  const handleSetMinPriceSuccess = (productId, minPrice) => {
+    // Update bargainingDetails with new minPrice and keep isActive as is or false if not set
+    const currentIsActive = bargainingDetails[productId]?.isActive || false;
+    const updatedBargainingDetails = {
+      ...bargainingDetails,
+      [productId]: {
+        ...bargainingDetails[productId],
+        minPrice: minPrice,
+        isActive: currentIsActive
+      }
+    };
+
+    // Update products array accordingly
+    let updatedProducts = data.products.map(product => {
+      if (product.variantId === productId) {
+        return { ...product, minPrice: minPrice };
+      }
+      return product;
+    });
+
+    // Sort updated products by id ascending for consistent order
+    updatedProducts = updatedProducts.sort((a, b) => {
+      if (a.id < b.id) return -1;
+      if (a.id > b.id) return 1;
+      return 0;
+    });
+
+    const activeProductCount = updatedProducts.filter(product => product.isActive).length;
+    const inactiveProductCount = updatedProducts.length - activeProductCount;
+
+    const updatedMetrics = [
+      updatedProducts.length,
+      activeProductCount,
+      inactiveProductCount
+    ];
+
+    setBargainingDetails(updatedBargainingDetails);
+    setData(prevData => ({
+      ...prevData,
+      products: updatedProducts,
+      metrics: updatedMetrics
+    }));
+  };
+
   return (
     <Box
       sx={{
@@ -294,10 +383,12 @@ const Inventory = () => {
             </Grid>
 
             <Grid item xs={12}>
-              <InventoryTable
+            <InventoryTable
                 products={data.products}
                 bargainingDetails={bargainingDetails}
                 onToggleActive={handleToggleActive}
+                onDeleteMinPriceSuccess={handleDeleteMinPriceSuccess}
+                onSetMinPriceSuccess={handleSetMinPriceSuccess}
               />
             </Grid>
           </Grid>
