@@ -94,20 +94,20 @@ const Inventory = () => {
         <>
           {/* Metric Cards */}
           <Grid container spacing={2} sx={{ fontWeight: 'bold', fontSize: '20px', marginBottom: '20px' }}>
-            {['Total Products', 'Active Products', 'Inactive Products'].map((metric, index) => (
-              <Grid item xs={12} sm={6} md={3} key={index}>
-                <Card
-                  sx={{
-                    backgroundColor: '#fff',
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                    transition: 'background-color 0.3s, color 0.3s',
-                    '&:hover': {
-                      backgroundColor: '#000',
-                      '& .hover-text': { color: '#fff' },
-                    },
-                  }}
-                >
+{['Total Products', 'Active Products', 'Inactive Products', 'Total Available Products'].map((metric, index) => (
+  <Grid item xs={12} sm={6} md={3} key={index}>
+    <Card
+      sx={{
+        backgroundColor: '#fff',
+        borderRadius: '8px',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+        transition: 'background-color 0.3s, color 0.3s',
+        '&:hover': {
+          backgroundColor: '#000',
+          '& .hover-text': { color: '#fff' },
+        },
+      }}
+    >
                   <CardContent>
                     <Typography
                       variant="subtitle2"
@@ -119,7 +119,7 @@ const Inventory = () => {
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
                       <Typography variant="h6" fontWeight="bold" className="hover-text" sx={{ transition: 'color 0.3s' }}>
-                        {data.metrics[index] || 0}
+                        {metric === 'Total Available Products' ? data.products.length : data.metrics[index] || 0}
                       </Typography>
                     </Box>
                   </CardContent>
