@@ -60,7 +60,7 @@ const InventoryTable = ({ products, bargainingDetails, onToggleActive, onDeleteM
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          productId: selectedProduct.variantId,
+          variantId: selectedProduct.variantId,
           minPrice: numericPrice 
         })
       });

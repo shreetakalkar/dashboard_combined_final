@@ -300,6 +300,13 @@ const CategorySettings = () => {
   const [editing, setEditing] = useState(null);
   const [newPercentage, setNewPercentage] = useState("");
   const [noOfproducts, setNoOfProducts] = useState("");
+
+  React.useEffect(() => {
+    if (setForAll) {
+      setNoOfProducts("");
+    }
+  }, [setForAll]);
+
   const [products, setProducts] = useState([]); // 🔥 FIX: Defined setProducts state
 
   // const fetchProducts = async () => {
@@ -424,9 +431,10 @@ const CategorySettings = () => {
         const result = await response.json();
         console.log("Fetched Data:", result);
 
+        // Assuming result.data.collections is an object where keys are category names
         const collections = result.data?.collections;
         if (collections && typeof collections === 'object') {
-          // Extract category names and ensure they're valid strings
+          // Extract category names as an array of strings
           const categoryNames = Object.keys(collections).filter(key => key && typeof key === 'string');
           console.log('Available categories:', categoryNames);
           setCategories(categoryNames);
@@ -434,21 +442,6 @@ const CategorySettings = () => {
           console.error('Invalid collections data:', collections);
           setCategories([]);
         }
-        // if (collections && typeof collections === "object") {
-        //   const categoriesArray = Object.entries(collections).flatMap(([key, items]) =>
-        //     items.map(item => ({
-        //       id: item.id,
-        //       title: item.name || key,
-        //       totalProducts: item.inventory_quantity ?? 0,
-        //       activeProducts: item.inventory_quantity > 0 ? item.inventory_quantity : 0,
-        //       icon: item.icon || "",
-        //     }))
-        //   );
-
-        //   setCategories(categoriesArray);
-        // } else {
-        //   throw new Error("Invalid data format: 'collections' is not an object.");
-        // }
 
         setLoading(false);
       } catch (err) {
@@ -462,15 +455,17 @@ const CategorySettings = () => {
   }, []);
 
   const handleCategoryChange = (event) => {
-    // Always update the category, even if setForAll is true
     const selectedCategory = event.target.value;
 
-    // Only set the category if it's empty or exists in our categories list
-    if (!selectedCategory || categories.includes(selectedCategory)) {
+    // Validate that the selected category exists in the categories list
+    if (selectedCategory && categories.includes(selectedCategory)) {
       setCategory(selectedCategory);
+    } else if (selectedCategory === "") {
+      // Allow clearing the selection
+      setCategory("");
     } else {
       console.warn(`Category "${selectedCategory}" is not in the available categories list`);
-      // Don't update the state with an invalid category
+      // Do not update the category state if invalid
     }
   };
 
@@ -488,110 +483,104 @@ const CategorySettings = () => {
 
     // Provide feedback to the user
     if (isChecked) {
-      alert("Price range filtering will be ignored. All products in the selected category will be included.");
+      alert("Settings will apply to all products within the selected category only.");
     }
   };
 
 
   const handleSave = async () => {
-      try {
-          setLoading(true);
+    try {
+      setLoading(true);
 
-          // Validate category is selected
-          if (!category) {
-              alert("Please select a category");
-              setLoading(false);
-              return;
-          }
-
-          // Validate that the selected category exists in the list of categories
-          if (category && categories.length > 0 && !categories.includes(category)) {
-              alert(`The category "${category}" does not exist. Please select a valid category from the dropdown.`);
-              setLoading(false);
-              return;
-          }
-
-          const token = localStorage.getItem("authToken");
-          if (!token) {
-              alert("Authentication token missing");
-              setLoading(false);
-              return;
-          }
-
-          let discount;
-          switch (bargaining) {
-              case "Low":
-                  discount = 10;
-                  break;
-              case "Normal":
-                  discount = 20;
-                  break;
-              case "High":
-                  discount = 30;
-                  break;
-              default:
-                  discount = 20;
-          }
-
-          // Make sure we're sending the exact parameter names expected by the backend
-          // If category is empty, use a default category
-          const selectedCategory = category || "Uncategorized";
-
-          // Create the payload based on whether we're setting for all products or not
-          let payload = {
-              category: selectedCategory,
-              minPrice: discount.toString(),
-              bargainingBehaviour: bargaining.toLowerCase(),
-              isProductAll: setForAll // Add this parameter to indicate if we want to apply to all products
-          };
-
-          // Only include price range parameters if we're not setting for all products
-          if (!setForAll) {
-              payload = {
-                  ...payload,
-                  startRange: Number(priceRange[0]),
-                  endRange: Number(priceRange[1]),
-                  noOfProducts: noOfproducts
-              };
-          }
-
-          console.log("Payload Sent to API:", JSON.stringify(payload));
-
-          const response1 = await fetch("http://localhost:5000/bargaining/set-by-category", {
-              method: "POST",
-              headers: {
-                  "Authorization": `Bearer ${token}`,
-                  "Content-Type": "application/json",
-              },
-              body: JSON.stringify(payload),
-          });
-
-          const result1 = await response1.json();
-          console.log("API Response (set-by-category):", result1);
-
-          if (!response1.ok) {
-              throw new Error(result1.message || "Failed to set bargaining details");
-          }
-
-          // We've successfully set the bargaining details with the set-by-category endpoint
-          // No need to call set-min-price since we're setting for a category, not a specific product
-          alert("Bargaining details set successfully!");
-      } catch (error) {
-          console.error("Error:", error);
-
-          // Handle specific error cases
-          if (error.message && error.message.includes("No products found")) {
-              if (setForAll) {
-                  alert(`No products found in category: ${category || "Uncategorized"}. Please select a different category.`);
-              } else {
-                  alert(`No products found in category: ${category || "Uncategorized"} within the given price range. Please adjust your price range or select a different category.`);
-              }
-          } else {
-              alert(error.message || "An error occurred");
-          }
-      } finally {
-          setLoading(false);
+      // Validate category is selected and valid
+      if (!category) {
+        alert("Please select a category");
+        setLoading(false);
+        return;
       }
+
+      if (categories.length > 0 && !categories.includes(category)) {
+        alert(`The category "${category}" does not exist. Please select a valid category from the dropdown.`);
+        setLoading(false);
+        return;
+      }
+
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        alert("Authentication token missing");
+        setLoading(false);
+        return;
+      }
+
+      let discount;
+      switch (bargaining) {
+        case "Low":
+          discount = 10;
+          break;
+        case "Normal":
+          discount = 20;
+          break;
+        case "High":
+          discount = 30;
+          break;
+        default:
+          discount = 20;
+      }
+
+      // Prepare payload with correct category string
+      const selectedCategory = category || "Uncategorized";
+
+      // Always apply to products within the selected category only
+      let payload = {
+        category: selectedCategory,
+        minPrice: discount.toString(),
+        bargainingBehaviour: bargaining.toLowerCase(),
+        isProductAll: setForAll, // true means apply to all products in the selected category
+      };
+
+      if (!setForAll) {
+        payload = {
+          ...payload,
+          startRange: Number(priceRange[0]),
+          endRange: Number(priceRange[1]),
+          noOfProducts: Number(noOfproducts) || 0,
+        };
+      }
+
+      console.log("Payload Sent to API:", JSON.stringify(payload));
+
+      const response1 = await fetch("http://localhost:5000/bargaining/set-by-category", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result1 = await response1.json();
+      console.log("API Response (set-by-category):", result1);
+
+      if (!response1.ok) {
+        throw new Error(result1.message || "Failed to set bargaining details");
+      }
+
+      alert("Bargaining details set successfully!");
+    } catch (error) {
+      console.error("Error:", error);
+
+      if (error.message && error.message.includes("No products found")) {
+        if (setForAll) {
+          alert(`No products found in category: ${category || "Uncategorized"}. Please select a different category.`);
+        } else {
+          alert(`No products found in category: ${category || "Uncategorized"} within the given price range. Please adjust your price range or select a different category.`);
+        }
+      } else {
+        alert(error.message || "An error occurred");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -788,7 +777,8 @@ const CategorySettings = () => {
                 <TextField
                   type="number"
                   size="small"
-                  defaultValue={100}
+                  value={noOfproducts}
+                  onChange={(e) => setNoOfProducts(e.target.value)}
                   disabled={setForAll}
                   style={{ width: 120 }}
                   inputProps={{
@@ -822,6 +812,7 @@ const CategorySettings = () => {
                 max={1000}
                 step={10}
                 sx={{ width: "100%" }}
+                disabled={setForAll}
               />
               <Box display="flex" justifyContent="space-between">
                 <Typography variant="body2">${priceRange[0]}</Typography>
