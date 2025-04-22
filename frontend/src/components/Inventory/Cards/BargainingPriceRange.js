@@ -27,7 +27,7 @@ const BargainingPriceRange = () => {
                     },
                 });
                 if (response.status === 200 && response.data) {
-                    const { minPrice, maxPrice } = response.data;
+                    const { minPrice, maxPrice } = response.data.data;
                     setMinPriceLimit(minPrice);
                     setMaxPriceLimit(maxPrice);
                     setPriceRange([minPrice, maxPrice]);
@@ -48,7 +48,11 @@ const BargainingPriceRange = () => {
     };
 
     const handleSwitchChange = (event) => {
-        setSetForAll(event.target.checked);
+        const checked = event.target.checked;
+        setSetForAll(checked);
+        if (checked) {
+            setNoOfProducts("");
+        }
     };
 
     const handleProductChange = (event) => {

@@ -19,6 +19,10 @@ const Inventory = () => {
   const [data, setData] = useState({ products: [], categories: [], metrics: [] });
   const [error, setError] = useState('');
   const [bargainingDetails, setBargainingDetails] = useState({});
+  const [globalPriceRange, setGlobalPriceRange] = useState([0, 1000]);
+  const [categoryPriceRanges, setCategoryPriceRanges] = useState({});
+  const [category, setCategory] = useState("");
+  const [minPricePerCategory, setMinPricePerCategory] = useState({});
 
   useEffect(() => {
     const fetchInventoryData = async () => {
@@ -26,6 +30,7 @@ const Inventory = () => {
         setLoading(true);
         setError('');
 
+        // Fetch all products
         const response = await fetch('http://localhost:5000/shopify/all-products', {
           method: 'GET',
           headers: {
@@ -40,8 +45,6 @@ const Inventory = () => {
         }
 
         const inventoryData = await response.json();
-        console.log('Fetched Inventory Data:', inventoryData);
-
         const allProducts = inventoryData?.data?.products || [];
         const categories = inventoryData?.data?.availableCategories || [];
 
@@ -56,7 +59,7 @@ const Inventory = () => {
         const categoriesWithCounts = categories.map(category => ({
           name: category,
           totalProducts: categoryCounts[category] || 0,
-          activeProducts: 0 // Placeholder, can be updated if active counts are available
+          activeProducts: 0
         }));
 
         // Fetch bargaining details for products
@@ -88,13 +91,14 @@ const Inventory = () => {
         // Transform products to include bargaining info
         let transformedProducts = allProducts.map(product => {
           const variant = product.variants?.[0] || {};
+          const price = parseFloat(variant.price || 0);
           return {
             id: product.id,
             variantId: variant.id?.toString(),
             product: product.title,
             category: product.product_type || "Uncategorized",
-            price: `$${variant.price || 0}`,
-            defaultPrice: parseFloat(variant.price || 0),
+            price: `$${price.toFixed(2)}`,
+            defaultPrice: price,
             quantity: variant.inventory_quantity || 0,
             behavior: bargainingMap[variant.id]?.behavior || "Normal",
             minPrice: bargainingMap[variant.id]?.minPrice || "",
@@ -102,24 +106,58 @@ const Inventory = () => {
           };
         });
 
-        // Sort products by id ascending for consistent order
-        transformedProducts = transformedProducts.sort((a, b) => {
-          if (a.id < b.id) return -1;
-          if (a.id > b.id) return 1;
-          return 0;
+        // Calculate global price range
+        const prices = transformedProducts.map(p => p.defaultPrice);
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+        setGlobalPriceRange([minPrice, maxPrice]);
+
+        // Calculate price ranges per category
+        const rangesByCategory = {};
+        transformedProducts.forEach(product => {
+          const cat = product.category;
+          if (!rangesByCategory[cat]) {
+            rangesByCategory[cat] = {
+              min: product.defaultPrice,
+              max: product.defaultPrice
+            };
+          } else {
+            if (product.defaultPrice < rangesByCategory[cat].min) {
+              rangesByCategory[cat].min = product.defaultPrice;
+            }
+            if (product.defaultPrice > rangesByCategory[cat].max) {
+              rangesByCategory[cat].max = product.defaultPrice;
+            }
+          }
         });
+        setCategoryPriceRanges(rangesByCategory);
+
+        // Calculate min price per category
+        const minPricesByCategory = {};
+        transformedProducts.forEach(product => {
+          const cat = product.category;
+          const productMinPrice = parseFloat(product.minPrice) || 0;
+          if (!minPricesByCategory[cat] || productMinPrice < minPricesByCategory[cat]) {
+            minPricesByCategory[cat] = productMinPrice;
+          }
+        });
+        setMinPricePerCategory(minPricesByCategory);
+
+        // Sort products by id ascending for consistent order
+        transformedProducts = transformedProducts.sort((a, b) => a.id - b.id);
 
         const activeProductCount = transformedProducts.filter(product => product.isActive).length;
         const inactiveProductCount = transformedProducts.length - activeProductCount;
 
         const metrics = [
-          transformedProducts.length,        // Total Products
-          activeProductCount,                // Active Products
-          inactiveProductCount               // Inactive Products
+          transformedProducts.length,
+          activeProductCount,
+          inactiveProductCount
         ];
 
         setData({ products: transformedProducts, categories: categoriesWithCounts, metrics });
         setBargainingDetails(bargainingMap);
+
       } catch (err) {
         console.error('Error fetching inventory data:', err);
         setError(err.message || 'Failed to fetch inventory data');
@@ -186,11 +224,7 @@ const Inventory = () => {
       });
 
       // Sort updated products by id ascending for consistent order
-      updatedProducts = updatedProducts.sort((a, b) => {
-        if (a.id < b.id) return -1;
-        if (a.id > b.id) return 1;
-        return 0;
-      });
+      updatedProducts = updatedProducts.sort((a, b) => a.id - b.id);
 
       const activeProductCount = updatedProducts.filter(product => product.isActive).length;
       const inactiveProductCount = updatedProducts.length - activeProductCount;
@@ -214,7 +248,6 @@ const Inventory = () => {
     }
   };
 
-  // Added missing handleDeleteMinPriceSuccess function
   const handleDeleteMinPriceSuccess = (productId) => {
     // Update bargainingDetails to remove minPrice and set isActive to false
     const updatedBargainingDetails = {
@@ -235,11 +268,7 @@ const Inventory = () => {
     });
 
     // Sort updated products by id ascending for consistent order
-    updatedProducts = updatedProducts.sort((a, b) => {
-      if (a.id < b.id) return -1;
-      if (a.id > b.id) return 1;
-      return 0;
-    });
+    updatedProducts = updatedProducts.sort((a, b) => a.id - b.id);
 
     const activeProductCount = updatedProducts.filter(product => product.isActive).length;
     const inactiveProductCount = updatedProducts.length - activeProductCount;
@@ -258,7 +287,6 @@ const Inventory = () => {
     }));
   };
 
-  // New handler for min price set success
   const handleSetMinPriceSuccess = (productId, minPrice) => {
     // Update bargainingDetails with new minPrice and set isActive to true
     const updatedBargainingDetails = {
@@ -279,11 +307,7 @@ const Inventory = () => {
     });
 
     // Sort updated products by id ascending for consistent order
-    updatedProducts = updatedProducts.sort((a, b) => {
-      if (a.id < b.id) return -1;
-      if (a.id > b.id) return 1;
-      return 0;
-    });
+    updatedProducts = updatedProducts.sort((a, b) => a.id - b.id);
 
     const activeProductCount = updatedProducts.filter(product => product.isActive).length;
     const inactiveProductCount = updatedProducts.length - activeProductCount;
@@ -303,18 +327,16 @@ const Inventory = () => {
   };
 
   return (
-    <Box
-      sx={{
-        padding: '20px 42px',
-        marginTop: '64px',
-        marginLeft: '191px',
-        backgroundColor: '#F5F6FA',
-        minHeight: '100vh',
-        boxSizing: 'border-box',
-        width: 'calc(100vw - 226px)',
-        fontFamily: 'sans-serif',
-      }}
-    >
+    <Box sx={{
+      padding: '20px 42px',
+      marginTop: '64px',
+      marginLeft: '191px',
+      backgroundColor: '#F5F6FA',
+      minHeight: '100vh',
+      boxSizing: 'border-box',
+      width: 'calc(100vw - 226px)',
+      fontFamily: 'sans-serif',
+    }}>
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
           <CircularProgress />
@@ -333,25 +355,18 @@ const Inventory = () => {
           <Grid container spacing={2} sx={{ fontWeight: 'bold', fontSize: '20px', marginBottom: '20px' }}>
             {['Total Products', 'Active Products', 'Inactive Products', 'Total Available Products'].map((metric, index) => (
               <Grid item xs={12} sm={6} md={3} key={index}>
-                <Card
-                  sx={{
-                    backgroundColor: '#fff',
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                    transition: 'background-color 0.3s, color 0.3s',
-                    '&:hover': {
-                      backgroundColor: '#000',
-                      '& .hover-text': { color: '#fff' },
-                    },
-                  }}
-                >
+                <Card sx={{
+                  backgroundColor: '#fff',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                  transition: 'background-color 0.3s, color 0.3s',
+                  '&:hover': {
+                    backgroundColor: '#000',
+                    '& .hover-text': { color: '#fff' },
+                  },
+                }}>
                   <CardContent>
-                    <Typography
-                      variant="subtitle2"
-                      color="text.secondary"
-                      className="hover-text"
-                      sx={{ transition: 'color 0.3s' }}
-                    >
+                    <Typography variant="subtitle2" color="text.secondary" className="hover-text" sx={{ transition: 'color 0.3s' }}>
                       {metric}
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
@@ -386,7 +401,17 @@ const Inventory = () => {
             <Grid item xs={12}>
               <Card>
                 <CardContent>
-                  <CategorySettings data={data.categories} />
+                  <CategorySettings 
+                    priceRange={globalPriceRange}
+                    setPriceRange={setGlobalPriceRange}
+                    category={category}
+                    setCategory={setCategory}
+                    data={data.categories}
+                    minPriceBound={globalPriceRange[0]}
+                    maxPriceBound={globalPriceRange[1]}
+                    categoryPriceRanges={categoryPriceRanges}
+                    minPricePerCategory={minPricePerCategory}
+                  />
                 </CardContent>
               </Card>
             </Grid>
@@ -396,7 +421,7 @@ const Inventory = () => {
             </Grid>
 
             <Grid item xs={12}>
-            <InventoryTable
+              <InventoryTable
                 products={data.products}
                 bargainingDetails={bargainingDetails}
                 onToggleActive={handleToggleActive}
