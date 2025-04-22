@@ -19,7 +19,11 @@ const Inventory = () => {
   const [data, setData] = useState({ products: [], categories: [], metrics: [] });
   const [error, setError] = useState('');
   const [bargainingDetails, setBargainingDetails] = useState({});
-  const [globalPriceRange, setGlobalPriceRange] = useState([0, 1000]);
+  const [globalPriceRange, _setGlobalPriceRange] = useState([0, 1000]);
+  const setGlobalPriceRange = (newRange) => {
+    console.log("Global price range updated:", newRange);
+    _setGlobalPriceRange(newRange);
+  };
   const [categoryPriceRanges, setCategoryPriceRanges] = useState({});
   const [category, setCategory] = useState("");
   const [minPricePerCategory, setMinPricePerCategory] = useState({});
@@ -56,11 +60,11 @@ const Inventory = () => {
         }, {});
 
         // Create categories array with counts
-        const categoriesWithCounts = categories.map(category => ({
+        const categoriesWithCounts = [{ name: "All Products", totalProducts: allProducts.length, activeProducts: 0 }, ...categories.map(category => ({
           name: category,
           totalProducts: categoryCounts[category] || 0,
           activeProducts: 0
-        }));
+        }))];
 
         // Fetch bargaining details for products
         const token = localStorage.getItem("authToken");

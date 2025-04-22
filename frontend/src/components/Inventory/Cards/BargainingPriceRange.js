@@ -4,13 +4,13 @@ import axios from "axios";
 
 const BargainingPriceRange = () => {
     const [bargaining, setBargaining] = useState("Normal");
-    const [priceRange, setPriceRange] = useState([0, 0]);
+    const [priceRange, setPriceRange] = useState([0, 1000000]);
     const [minPricePercentage, setMinPricePercentage] = useState(20);
     const [setForAll, setSetForAll] = useState(false);
     const [noOfProducts, setNoOfProducts] = useState("");
     const [loading, setLoading] = useState(false);
     const [minPriceLimit, setMinPriceLimit] = useState(0);
-    const [maxPriceLimit, setMaxPriceLimit] = useState(1000);
+    const [maxPriceLimit, setMaxPriceLimit] = useState(1000000);
 
     useEffect(() => {
         // Fetch min and max product prices from backend or API
@@ -27,10 +27,11 @@ const BargainingPriceRange = () => {
                     },
                 });
                 if (response.status === 200 && response.data) {
-                    const { minPrice, maxPrice } = response.data.data;
+                    const { minPrice } = response.data.data;
                     setMinPriceLimit(minPrice);
-                    setMaxPriceLimit(maxPrice);
-                    setPriceRange([minPrice, maxPrice]);
+                    // Set maxPriceLimit to a large number to simulate infinity
+                    setMaxPriceLimit(1000000);
+                    setPriceRange([minPrice, 1000000]);
                 }
             } catch (error) {
                 console.error("Failed to fetch price range:", error);

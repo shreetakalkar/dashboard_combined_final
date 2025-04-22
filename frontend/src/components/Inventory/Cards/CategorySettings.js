@@ -37,6 +37,7 @@ const CategorySettings = ({
   const [editing, setEditing] = useState(null);
   const [newPercentage, setNewPercentage] = useState("");
   const [noOfproducts, setNoOfProducts] = useState("");
+  const [localPriceRange, setLocalPriceRange] = useState(priceRange);
 
   useEffect(() => {
     if (data && Array.isArray(data)) {
@@ -47,10 +48,10 @@ const CategorySettings = ({
   useEffect(() => {
     if (category && categoryPriceRanges[category]) {
       const range = categoryPriceRanges[category];
-      setPriceRange([range.min, range.max]);
+      setLocalPriceRange([range.min, range.max]);
       setMinPrice(minPricePerCategory[category] || 0);
     } else if (category === "") {
-      setPriceRange([minPriceBound, maxPriceBound]);
+      setLocalPriceRange([minPriceBound, maxPriceBound]);
       setMinPrice(0);
     }
   }, [category, categoryPriceRanges, minPriceBound, maxPriceBound, minPricePerCategory]);
@@ -61,7 +62,8 @@ const CategorySettings = ({
   };
 
   const handlePriceChange = (event, newValue) => {
-    setPriceRange(newValue);
+    console.log("Slider value changed:", newValue);
+    setLocalPriceRange(newValue);
   };
 
   const handleBargainingChange = (event, newBargaining) => {
@@ -71,6 +73,9 @@ const CategorySettings = ({
   const handleSwitchChange = (event) => {
     const isChecked = event.target.checked;
     setSetForAll(isChecked);
+    if (isChecked) {
+      setNoOfProducts("0");
+    }
   };
 
   const handleProductChange = (event) => {
@@ -337,7 +342,7 @@ const CategorySettings = ({
                 valueLabelDisplay="auto"
                 min={minPriceBound}
                 max={maxPriceBound}
-                step={10}
+                step={1}
                 disabled={setForAll}
                 sx={{ width: "100%" }}
               />
