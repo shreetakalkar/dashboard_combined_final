@@ -186,7 +186,7 @@ const CategorySettings = ({
 
         <Grid item xs={12} sm={6} md={4} sx={{ mb: 2 }}>
           <Typography variant="body2" sx={{ mb: 1 }}>
-            Select a Category
+            Select a product type
           </Typography>
           <FormControl fullWidth>
             <Select
@@ -203,7 +203,7 @@ const CategorySettings = ({
               }}
             >
               <MenuItem value="">
-                Select a Category
+                Select a Product type
               </MenuItem>
               {categories.map((cat) => (
                 <MenuItem key={cat} value={cat}>
@@ -337,18 +337,22 @@ const CategorySettings = ({
           }}>
             <Box sx={{ display: "flex", flexDirection: "column", width: "30%", marginLeft: "2%" }}>
               <Slider
-                value={priceRange}
+                value={localPriceRange}
                 onChange={handlePriceChange}
                 valueLabelDisplay="auto"
                 min={minPriceBound}
                 max={maxPriceBound}
                 step={1}
-                disabled={setForAll}
                 sx={{ width: "100%" }}
+                disabled={setForAll}
               />
               <Box display="flex" justifyContent="space-between">
-                <Typography variant="body2">${priceRange[0]}</Typography>
-                <Typography variant="body2">${priceRange[1]}</Typography>
+                <Typography variant="body2">
+                  ${localPriceRange[0].toFixed(2)}
+                </Typography>
+                <Typography variant="body2">
+                  ${localPriceRange[1].toFixed(2)}
+                </Typography>
               </Box>
             </Box>
 
