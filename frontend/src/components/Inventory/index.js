@@ -93,21 +93,25 @@ const Inventory = () => {
         }, {});
 
         // Transform products to include bargaining info
-        let transformedProducts = allProducts.map(product => {
-          const variant = product.variants?.[0] || {};
-          const price = parseFloat(variant.price || 0);
-          return {
-            id: product.id,
-            variantId: variant.id?.toString(),
-            product: product.title,
-            category: product.product_type || "Uncategorized",
-            price: `$${price.toFixed(2)}`,
-            defaultPrice: price,
-            quantity: variant.inventory_quantity || 0,
-            behavior: bargainingMap[variant.id]?.behavior || "Normal",
-            minPrice: bargainingMap[variant.id]?.minPrice || "",
-            isActive: bargainingMap[variant.id]?.isActive || false
-          };
+        let transformedProducts = [];
+        allProducts.forEach(product => {
+          (product.variants || []).forEach(variant => {
+            const price = parseFloat(variant.price || 0);
+            transformedProducts.push({
+              id: product.id,
+              variantId: variant.id?.toString(),
+              product: product.title,
+              variantName: variant.title || "",
+              sku: variant.sku || "",
+              category: product.product_type || "Uncategorized",
+              price: price,
+              defaultPrice: price,
+              inventory_quantity: variant.inventory_quantity || 0,
+              behavior: bargainingMap[variant.id]?.behavior || "Normal",
+              minPrice: bargainingMap[variant.id]?.minPrice || "",
+              isActive: bargainingMap[variant.id]?.isActive || false
+            });
+          });
         });
 
         // Calculate global price range
@@ -147,8 +151,14 @@ const Inventory = () => {
         });
         setMinPricePerCategory(minPricesByCategory);
 
-        // Sort products by id ascending for consistent order
-        transformedProducts = transformedProducts.sort((a, b) => a.id - b.id);
+        // Sort products by product title alphabetically, then by variantId ascending
+        transformedProducts = transformedProducts.sort((a, b) => {
+          if (a.product.toLowerCase() < b.product.toLowerCase()) return -1;
+          if (a.product.toLowerCase() > b.product.toLowerCase()) return 1;
+          if (a.variantId < b.variantId) return -1;
+          if (a.variantId > b.variantId) return 1;
+          return 0;
+        });
 
         const activeProductCount = transformedProducts.filter(product => product.isActive).length;
         const inactiveProductCount = transformedProducts.length - activeProductCount;

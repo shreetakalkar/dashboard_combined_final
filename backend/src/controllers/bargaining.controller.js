@@ -465,6 +465,11 @@ export const setBargainingForSingleProduct = asyncHandler(async (req, res, next)
       return next(new ApiError(404, "Product variant not found"));
     }
 
+    // Check inventory stock > 0 before setting min price
+    if (targetVariant.inventory_quantity <= 0) {
+      return next(new ApiError(400, "Cannot set minimum price: Variant is out of stock"));
+    }
+
     // Validate minPrice is less than original price
     if (minPrice >= targetVariant.price) {
       return next(new ApiError(400, "Minimum price must be less than the original price"));

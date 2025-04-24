@@ -54,6 +54,8 @@ const VariantMinPriceModal = ({
     onSave(minPrice);
   };
 
+  const isOutOfStock = selectedVariant?.inventory_quantity === 0;
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Set Minimum Price for Variant</DialogTitle>
@@ -68,6 +70,11 @@ const VariantMinPriceModal = ({
           {parentMinPrice && (
             <Typography variant="body2" color="textSecondary">
               Parent Product Min Price: ${parentMinPrice?.toFixed(2)}
+            </Typography>
+          )}
+          {isOutOfStock && (
+            <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+              Cannot set minimum price: Variant is out of stock.
             </Typography>
           )}
         </Box>
@@ -85,11 +92,12 @@ const VariantMinPriceModal = ({
             max: defaultPrice,
             step: "0.01"
           }}
+          disabled={isOutOfStock}
         />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSave} color="primary" variant="contained">
+        <Button onClick={handleSave} color="primary" variant="contained" disabled={isOutOfStock}>
           Save
         </Button>
       </DialogActions>

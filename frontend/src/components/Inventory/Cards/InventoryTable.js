@@ -232,79 +232,81 @@ const InventoryTable = ({ products, bargainingDetails, onToggleActive, onDeleteM
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Default Price</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Category</TableCell>
-              <TableCell>Product</TableCell>
-              <TableCell>Behavior</TableCell>
-              <TableCell>Min Price</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {currentData.map((product) => (
-              <TableRow key={product.id} hover>
-                <TableCell>{product.id}</TableCell>
-                <TableCell>{product.price}</TableCell>
-                <TableCell>
-                  <Button
-                    variant="outlined"
-                    color={bargainingDetails[product.variantId]?.isActive ? "success" : "error"}
-                    size="small"
-                    onClick={() => onToggleActive(product.variantId)}
-                    disabled={product.quantity <= 0 || !bargainingDetails[product.variantId]?.minPrice}
-                  >
-                    {bargainingDetails[product.variantId]?.isActive ? "Active" : "Inactive"}
-                  </Button>
-                </TableCell>
-                <TableCell>{product.category}</TableCell>
-                <TableCell>{product.product}</TableCell>
-                <TableCell>
-                  <Select
-                    value={product.behavior}
-                    size="small"
-                    variant="outlined"
-                    sx={{ width: 120 }}
-                    disabled
-                  >
-                    <MenuItem value="Normal">Normal</MenuItem>
-                    <MenuItem value="Low">Low</MenuItem>
-                    <MenuItem value="High">High</MenuItem>
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  {bargainingDetails[product.variantId]?.minPrice && parseFloat(bargainingDetails[product.variantId].minPrice) > 0 ? (
-                    <Typography>
-                      ${bargainingDetails[product.variantId].minPrice}
-                    </Typography>
-                  ) : (
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => handleSetMinPrice(product)}
-                      disabled={product.quantity <= 0 || lockedMinPrices[product.variantId]}
-                    >
-                      Set min price
-                    </Button>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Box display="flex" gap={1}>
-                    <Button
-                      variant="contained"
-                      color="error"
-                      size="small"
-                      onClick={() => handleDeleteMinPrice(product.variantId)}
-                      disabled={!bargainingDetails[product.variantId]?.minPrice}
-                    >
-                      Delete
-                    </Button>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
+          <TableCell>Product Title</TableCell>
+          <TableCell>Product Type</TableCell>
+          <TableCell>Default Price</TableCell>
+          <TableCell>Variant Name</TableCell>
+          <TableCell>Status</TableCell>
+          <TableCell>Stock</TableCell>
+          <TableCell>Behavior</TableCell>
+          <TableCell>Min Price</TableCell>
+          <TableCell>Actions</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {currentData.map((product) => (
+          <TableRow key={product.variantId} hover>
+            <TableCell>{product.product}</TableCell>
+            <TableCell>{product.category}</TableCell>
+            <TableCell>{product.price}</TableCell>
+            <TableCell>{product.variantName ? product.variantName : "No variant available"}</TableCell>
+            <TableCell>
+              <Button
+                variant="outlined"
+                color={bargainingDetails[product.variantId]?.minPrice ? "success" : "error"}
+                size="small"
+                onClick={() => onToggleActive(product.variantId)}
+                disabled={product.inventory_quantity <= 0 || !bargainingDetails[product.variantId]?.minPrice}
+              >
+                {bargainingDetails[product.variantId]?.minPrice ? "Active" : "Inactive"}
+              </Button>
+            </TableCell>
+            <TableCell>{product.inventory_quantity}</TableCell>
+            <TableCell>
+              <Select
+                value={product.behavior || "Normal"}
+                size="small"
+                variant="outlined"
+                sx={{ width: 120 }}
+                disabled
+              >
+                <MenuItem value="Normal">Normal</MenuItem>
+                <MenuItem value="Low">Low</MenuItem>
+                <MenuItem value="High">High</MenuItem>
+              </Select>
+            </TableCell>
+            <TableCell>
+              {bargainingDetails[product.variantId]?.minPrice && parseFloat(bargainingDetails[product.variantId].minPrice) > 0 ? (
+                <Typography>
+                  ${parseFloat(bargainingDetails[product.variantId].minPrice).toFixed(2)}
+                </Typography>
+              ) : (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => handleSetMinPrice(product)}
+                  disabled={product.inventory_quantity <= 0 || lockedMinPrices[product.variantId]}
+                >
+                  Set min price
+                </Button>
+              )}
+            </TableCell>
+            <TableCell>
+              <Box display="flex" gap={1}>
+                <Button
+                  variant="contained"
+                  color="error"
+                  size="small"
+                  onClick={() => handleDeleteMinPrice(product.variantId)}
+                  disabled={!bargainingDetails[product.variantId]?.minPrice}
+                >
+                  Delete
+                </Button>
+              </Box>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
         </Table>
       </TableContainer>
 

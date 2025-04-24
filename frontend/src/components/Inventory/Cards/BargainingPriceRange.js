@@ -28,9 +28,8 @@ const BargainingPriceRange = ({ data }) => {
     if (data && data.length > 0) {
       // Calculate min and max prices from the actual product data
       const prices = data.map(product => {
-        // Remove dollar sign and convert to number
-        const priceStr = product.price.replace('$', '');
-        return parseFloat(priceStr) || 0;
+        // product.price is now a number, so no need to replace
+        return product.price || 0;
       });
       
       const minPrice = Math.min(...prices);
