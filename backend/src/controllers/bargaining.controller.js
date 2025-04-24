@@ -134,10 +134,10 @@ export const setBargainingByCategory = asyncHandler(async (req, res, next) => {
       userId: req.user._id,
     });
 
-    if (existing) {
+      if (existing) {
       existing.minPrice = calculatedMinPrice;
       existing.bargainingBehaviour = bargainingBehaviour;
-      existing.isActive = false; // Start as inactive
+      existing.isActive = true; // Set active when minPrice is set
       await existing.save();
       updatedBargainingDetails.push(existing);
     } else {
@@ -146,7 +146,7 @@ export const setBargainingByCategory = asyncHandler(async (req, res, next) => {
         minPrice: calculatedMinPrice,
         category,
         bargainingBehaviour,
-        isActive: false, // Start as inactive
+        isActive: true, // Set active when minPrice is set
         userId: req.user._id,
         productTitle: product.productTitle,
         variantTitle: product.variantTitle,
@@ -251,7 +251,7 @@ export const setBargainingToAllProducts = asyncHandler(async (req, res, next) =>
           originalPrice: product.originalPrice,
           minPricePercentage: product.minPricePercentage,
           category: product.category,
-          isActive: false, // Start as inactive
+          isActive: true, // Set active when minPrice is set
           behavior: behavior || "NORMAL",
           userId: req.user._id,
           productTitle: product.productTitle,
