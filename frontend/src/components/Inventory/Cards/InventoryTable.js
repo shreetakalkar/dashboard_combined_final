@@ -21,7 +21,7 @@ import {
 import { RefreshCw } from "lucide-react";
 import SetMinPriceModal from "../../SetMinPriceModel";
 
-const InventoryTable = ({ products, bargainingDetails, onToggleActive, onDeleteMinPriceSuccess, onSetMinPriceSuccess }) => {
+const InventoryTable = ({ products, bargainingDetails, onToggleActive, onDeleteMinPriceSuccess, onSetMinPriceSuccess, onRefresh }) => {
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,7 +32,9 @@ const InventoryTable = ({ products, bargainingDetails, onToggleActive, onDeleteM
 
   // Handlers
   const handleRefresh = () => {
-    window.location.reload();
+    if (onRefresh) {
+      onRefresh();
+    }
   };
 
   const handleSaveMinPrice = async (minPrice) => {
@@ -60,7 +62,7 @@ const InventoryTable = ({ products, bargainingDetails, onToggleActive, onDeleteM
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          variantId: selectedProduct.variantId,
+          productId: selectedProduct.variantId,
           minPrice: numericPrice 
         })
       });
@@ -183,8 +185,8 @@ const InventoryTable = ({ products, bargainingDetails, onToggleActive, onDeleteM
           </Typography>
         </Grid>
         <Grid item>
-          <IconButton onClick={handleRefresh} color="primary" disabled={!products}>
-            <RefreshCw className={!products ? "animate-spin" : ""} />
+          <IconButton onClick={handleRefresh} color="primary" disabled={!products || !onRefresh}>
+            <RefreshCw className={!products ? "animate-spin" : ""} ></RefreshCw>
           </IconButton>
         </Grid>
       </Grid>
