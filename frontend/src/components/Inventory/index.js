@@ -28,6 +28,10 @@ const Inventory = () => {
   const [category, setCategory] = useState("");
   const [minPricePerCategory, setMinPricePerCategory] = useState({});
 
+  // New state for current plan and product limit
+  const [currentPlan, setCurrentPlan] = useState(null);
+  const [productLimit, setProductLimit] = useState(null);
+
   useEffect(() => {
     const fetchInventoryData = async () => {
       try {
@@ -183,6 +187,23 @@ const Inventory = () => {
     fetchInventoryData();
   }, []);
 
+  // Fetch current plan and product limit on mount
+  useEffect(() => {
+    async function fetchPlan() {
+      try {
+        const shopDomain = new URL(window.location.origin).hostname;
+        const res = await fetch(`/plan/plan-status?shop=${shopDomain}`);
+        if (!res.ok) throw new Error('Failed to fetch plan status');
+        const data = await res.json();
+        setCurrentPlan(data.plan);
+        setProductLimit(data.product_limit);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    fetchPlan();
+  }, []);
+
   const handleToggleActive = async (productId) => {
     if (!bargainingDetails[productId]?.minPrice) {
       alert("Please set a minimum price before activating the product");
@@ -195,7 +216,7 @@ const Inventory = () => {
       ).length;
 
       const isCurrentlyActive = bargainingDetails[productId]?.isActive || false;
-      const MAX_ACTIVE_PRODUCTS = 10;
+      const MAX_ACTIVE_PRODUCTS = productLimit || 10; // Use productLimit from plan or default 10
 
       if (!isCurrentlyActive && currentActiveCount >= MAX_ACTIVE_PRODUCTS) {
         throw new Error(`Maximum ${MAX_ACTIVE_PRODUCTS} products can be active at a time`);

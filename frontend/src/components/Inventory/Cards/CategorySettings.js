@@ -25,7 +25,8 @@ const CategorySettings = ({
   minPriceBound, 
   maxPriceBound,
   categoryPriceRanges,
-  minPricePerCategory
+  minPricePerCategory,
+  products // new prop: array of products with stock info
 }) => {
   const [bargaining, setBargaining] = useState("Normal");
   const [minPrice, setMinPrice] = useState(0);
@@ -90,6 +91,20 @@ const CategorySettings = ({
 
       if (!category) {
         alert("Please select a category");
+        setLoading(false);
+        return;
+      }
+
+      // Filter products with stock > 0 based on category or all products
+      let filteredProducts = [];
+      if (setForAll) {
+        filteredProducts = products.filter(p => p.inventory_quantity > 0);
+      } else {
+        filteredProducts = products.filter(p => p.inventory_quantity > 0 && p.category === category);
+      }
+
+      if (filteredProducts.length === 0) {
+        alert("No products with stock available in the selected category to set min price.");
         setLoading(false);
         return;
       }

@@ -11,6 +11,8 @@ import crypto from 'crypto';
 import CompanyDetails from "../models/companyDetails.model.js";
 
 
+import { createClientDetails } from "./client.controller.js";
+
 export const signup = asyncHandler(async (req, res, next) => {
     const {
         firstName,
@@ -80,6 +82,14 @@ export const signup = asyncHandler(async (req, res, next) => {
         city,
         userId: user._id,
     });
+
+    // Create client details with default free plan
+    const shopifyData = {
+        shopifyShopName: "",
+        accessToken: "",
+        apiVersion: ""
+    };
+    await createClientDetails(user, shopifyData);
 
     // Send verification email
     try {

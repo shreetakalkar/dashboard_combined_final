@@ -81,12 +81,15 @@ export const setBargainingByCategory = asyncHandler(async (req, res, next) => {
       if (productCategory === normalizedCategory) {
         for (const variant of product.variants) {
           const variantPrice = parseFloat(variant.price);
-          filteredProducts.push({
-            productId: variant.id.toString(),
-            price: variantPrice,
-            productTitle: product.title,
-            variantTitle: variant.title,
-          });
+          // Only include variants with inventory_quantity > 0
+          if (variant.inventory_quantity > 0) {
+            filteredProducts.push({
+              productId: variant.id.toString(),
+              price: variantPrice,
+              productTitle: product.title,
+              variantTitle: variant.title,
+            });
+          }
         }
       }
     }
@@ -97,7 +100,7 @@ export const setBargainingByCategory = asyncHandler(async (req, res, next) => {
       if (productCategory === normalizedCategory) {
         for (const variant of product.variants) {
           const variantPrice = parseFloat(variant.price);
-          if (variantPrice >= startRange && variantPrice <= endRange) {
+          if (variantPrice >= startRange && variantPrice <= endRange && variant.inventory_quantity > 0) {
             filteredProducts.push({
               productId: variant.id.toString(),
               price: variantPrice,
@@ -206,7 +209,8 @@ export const setBargainingToAllProducts = asyncHandler(async (req, res, next) =>
   for (const product of data.products) {
     for (const variant of product.variants) {
       const variantPrice = parseFloat(variant.price);
-      if (variantPrice >= startRange && variantPrice <= endRange) {
+      // Only include variants with inventory_quantity > 0
+      if (variantPrice >= startRange && variantPrice <= endRange && variant.inventory_quantity > 0) {
         filteredProducts.push({
           ...variant,
           category: product.product_type || "Uncategorized",
@@ -724,13 +728,28 @@ export const markAsRead = asyncHandler(async (req, res, next) => {
 // ---------------------------
 export const toggleBargainingActive = asyncHandler(async (req, res, next) => {
   const { productId } = req.params;
-  const MAX_ACTIVE_PRODUCTS = 10; // Maximum allowed active products
 
   if (!productId) {
     return next(new ApiError(400, "Product ID is required"));
   }
 
   try {
+    // Fetch client's plan and product limit
+    const clientDetails = await ClientDetails.findOne({ userId: req.user._id });
+    if (!clientDetails) {
+      return next(new ApiError(404, "Client details not found"));
+    }
+
+    // Define product limits per plan
+    const planProductLimits = {
+      free: 10,
+      startup: 50,
+      business: 100,
+      enterprise: 500,
+    };
+
+    const productLimit = planProductLimits[clientDetails.plan] || 10;
+
     const activeCount = await BargainingDetails.countDocuments({
       userId: req.user._id,
       isActive: true,
@@ -738,27 +757,29 @@ export const toggleBargainingActive = asyncHandler(async (req, res, next) => {
 
     const bargainingDetail = await BargainingDetails.findOne({
       productId,
-      userId: req.user._id, });
+      userId: req.user._id,
+    });
 
-      if (!bargainingDetail) {
-        return next(new ApiError(404, "Bargaining details not found for this product"));
-      }
-  
-      const isCurrentlyActive = bargainingDetail.isActive;
-  
-      if (!isCurrentlyActive && activeCount >= MAX_ACTIVE_PRODUCTS) {
-        return next(
-          new ApiError(400, `Maximum ${MAX_ACTIVE_PRODUCTS} products can be active at a time`)
-        );
-      }
-      bargainingDetail.isActive = !isCurrentlyActive;
-      await bargainingDetail.save();
-  
-      res.status(200).json(
-        new ApiResponse(200, bargainingDetail, "Active status updated successfully")
-      );
-    } catch (error) {
-      console.error("Error toggling active status:", error);
-      return next(new ApiError(500, "Failed to toggle active status"));
+    if (!bargainingDetail) {
+      return next(new ApiError(404, "Bargaining details not found for this product"));
     }
-  });
+
+    const isCurrentlyActive = bargainingDetail.isActive;
+
+    if (!isCurrentlyActive && activeCount >= productLimit) {
+      return next(
+        new ApiError(400, `Maximum ${productLimit} products can be active at a time for your plan`)
+      );
+    }
+
+    bargainingDetail.isActive = !isCurrentlyActive;
+    await bargainingDetail.save();
+
+    res.status(200).json(
+      new ApiResponse(200, bargainingDetail, "Active status updated successfully")
+    );
+  } catch (error) {
+    console.error("Error toggling active status:", error);
+    return next(new ApiError(500, "Failed to toggle active status"));
+  }
+});

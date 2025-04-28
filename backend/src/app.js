@@ -85,11 +85,22 @@ import userRouter from "./routes/user.route.js";
 import shopifyRouter from "./routes/shopify.route.js";
 import bargainingRouter from "./routes/bargaining.route.js";
 import companyRouter from "./routes/company.route.js";
+import clientRouter from "./routes/client.route.js";
+
+import planRouter from "./routes/plan.js";
+import billingRouter from "./routes/billing.js";
+import webhooksRouter from "./routes/webhooks.js";
 
 app.use("/users", userRouter);
 app.use("/company", companyRouter);
 app.use("/shopify", shopifyRouter);
 app.use("/bargaining", bargainingRouter);
+app.use("/clients", clientRouter);
+
+app.use("/plan", planRouter);
+app.use("/billing", billingRouter);
+app.use("/webhooks", webhooksRouter);
+
 
 app.use(errorMiddleware);
 
